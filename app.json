@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "compre-bem-app",
-    "slug": "compre-bem-app",
+    "name": "loja-compre-bem-app",
+    "slug": "loja-compre-bem-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
