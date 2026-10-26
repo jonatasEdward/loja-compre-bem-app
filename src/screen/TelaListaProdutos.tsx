@@ -1,39 +1,31 @@
 import { NavigationProp } from '@react-navigation/native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, FlatList, TextInput, View, KeyboardAvoidingView, ScrollView } from 'react-native';
-import { RootStackParamList } from './App';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Produto } from '../types/produto';
+import { getProdutos } from '../service/produto-service';
+import { RootStackParamList } from '../../App';
 
-export type Produto = {
-    id: number;
-    nome: string;
-    preco: number;
-    imagem?: string;
-    descricao?: string;
-}
-
-export const listaProdutos: Produto[] = [
-    { id: 1, nome: 'Produto 1', preco: 10.999999, imagem: require('./assets/img/produto-cadeira.png'), descricao: 'Descrição do Produto 1' },
-    { id: 2, nome: 'Produto 2', preco: 19.99, imagem: require('./assets/img/produto-mesa.png'), descricao: 'Descrição do Produto 2' },
-    { id: 3, nome: 'Produto 3', preco: 5.99, imagem: require('./assets/img/produto-luminaria.png'), descricao: 'Descrição do Produto 3' }
-];
-
-type Props = NavigationProp<RootStackParamList, 'TelaListaProdutos'> & {
-    produtos: Produto[];
-    onAdicionarProduto: (novoProduto: Produto) => void;
-    onGerarProdutosTeste: (quantidade: number) => void;
-};
+type Props = NavigationProp<RootStackParamList, 'TelaListaProdutos'>;
 
 const CHAVE_FAVORITOS = '@compre-bem:favoritos';
 
-export default function ListaProdutos({ navigation, produtos, onAdicionarProduto, onGerarProdutosTeste }: Props) {
-    const [descricao, setDescricao] = useState('');
+export default function ListaProdutos({ navigation }: Props) {
+
+    const [produtos, setProdutos] = useState<Produto[]>([]);
+    const [pagina, setPagina] = useState(0);
+    const [carregando, setCarregando] = useState(true);
+    const [erro, setErro] = useState('');
+    const [busca, setBusca] = useState('');
+
+   const [descricao, setDescricao] = useState('');
     const [nome, setNome] = useState('');
     const [preco, setPreco] = useState('');
-    const [erro, setErro] = useState('');
 
     const [favoritos, setFavoritos] = useState([]);
+    
+    const buscandoMais = useRef(false);
 
     useEffect(() => {
         AsyncStorage.getItem(CHAVE_FAVORITOS).then(valor => {
@@ -43,7 +35,6 @@ export default function ListaProdutos({ navigation, produtos, onAdicionarProduto
         });
     }, []);
 
-    const [busca, setBusca] = useState('');
     const produtosFiltrados = useMemo(() => {
         return produtos.filter(produto =>
             produto.nome.toLowerCase().includes(busca.toLowerCase())
@@ -53,12 +44,11 @@ export default function ListaProdutos({ navigation, produtos, onAdicionarProduto
     function validarSalvarProduto() {
         if (validarProduto(nome, preco)) {
             const novoProduto: Produto = {
-                id: produtos.length + 1,
                 nome: nome,
                 preco: parseFloat(preco),
                 descricao: descricao
             };
-            onAdicionarProduto(novoProduto);
+            setProdutos((atual) => [...atual, novoProduto]);
             setNome('');
             setPreco('');
             setDescricao('');
@@ -79,13 +69,20 @@ export default function ListaProdutos({ navigation, produtos, onAdicionarProduto
         return true;
     }
 
-    function alterarFavorito(id: number) {
+    function alterarFavorito(id: string) {
         setFavoritos((atual) => {
             const novo = atual.includes(id) ? atual.filter(favId => favId !== id) : [...atual, id];
             AsyncStorage.setItem(CHAVE_FAVORITOS, JSON.stringify(novo));
             return novo;
         });
     }
+
+
+    useEffect(() => {
+        getProdutos(pagina, busca).then((resposta) => {
+            setProdutos(resposta);
+        });
+    }, [pagina, busca]);
 
     return (
         <SafeAreaView style={styles.area} edges={['top', 'left', 'right']}>
@@ -108,7 +105,6 @@ export default function ListaProdutos({ navigation, produtos, onAdicionarProduto
                         returnKeyType='next'
                     />
 
-
                     <TextInput
                         style={styles.input}
                         placeholder="Descrição do Produto"
@@ -127,12 +123,6 @@ export default function ListaProdutos({ navigation, produtos, onAdicionarProduto
                         onPress={validarSalvarProduto}>
                         <Text>Adicionar Produto</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.botaoTeste}
-                        onPress={() => onGerarProdutosTeste(300)}
-                    >
-                        <Text style={styles.botaoTesteTexto}>Gerar 300 produtos de teste (Aula 17)</Text>
-                    </TouchableOpacity>
                 </View>
                 <TextInput
                     style={styles.buscar}
@@ -144,7 +134,7 @@ export default function ListaProdutos({ navigation, produtos, onAdicionarProduto
                 <ScrollView>
                     <FlatList
                         data={produtosFiltrados}
-                        keyExtractor={(item) => item.id.toString()}
+                        keyExtractor={(item) => item.id}
                         renderItem={({ item }) => (
                             <View style={styles.item}>
                                 <TouchableOpacity

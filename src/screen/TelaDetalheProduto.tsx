@@ -1,7 +1,7 @@
 import { Text, View, Image, StyleSheet } from 'react-native';
-import { Produto, listaProdutos } from './TelaListaProdutos';
-import { RootStackParamList } from './App';
+import { RootStackParamList } from '../../App';
 import { NavigationProp } from '@react-navigation/native';
+import { Produto } from '../types/produto';
 
 type Props = NavigationProp<RootStackParamList, 'TelaDetalheProduto'> & {
   produtos: Produto[];
@@ -10,7 +10,6 @@ type Props = NavigationProp<RootStackParamList, 'TelaDetalheProduto'> & {
 function DetalheProduto({ produto }: { produto: Produto }) {
   return (
     <View style={styles.container}>
-      <Image source={produto.imagem ?? require('./assets/img/produto-mesa.png')} style={styles.imagem} />
       <Text style={styles.nome}>{produto.nome}</Text>
       <Text style={styles.preco}>R$ {produto.preco.toFixed(2)}</Text>
       <Text style={styles.descricao}>{produto.descricao}</Text>
