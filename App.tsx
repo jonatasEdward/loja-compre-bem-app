@@ -7,7 +7,7 @@ import ListaProdutos from './src/screen/TelaListaProdutos';
 
 export type RootStackParamList = {
   TelaListaProdutos: undefined;
-  TelaDetalheProduto: { produtoId: number };
+  TelaDetalheProduto: { produtoId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

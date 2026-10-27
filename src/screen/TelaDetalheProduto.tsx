@@ -2,25 +2,37 @@ import { Text, View, Image, StyleSheet } from 'react-native';
 import { RootStackParamList } from '../../App';
 import { NavigationProp } from '@react-navigation/native';
 import { Produto } from '../types/produto';
+import { useEffect, useState } from 'react';
+import { getByProdutoId } from '../service/produto-service';
 
-type Props = NavigationProp<RootStackParamList, 'TelaDetalheProduto'> & {
-  produtos: Produto[];
-};
+type Props = NavigationProp<RootStackParamList, 'TelaDetalheProduto'>;
 
-function DetalheProduto({ produto }: { produto: Produto }) {
+export default function TelaDetalheProduto({ route }: Props) {
+  const { produtoId } = route.params;
+  const [produto, setProduto] = useState<Produto | null>(null);
+
+  useEffect(() => {
+    getByProdutoId(produtoId)
+    .then((produto) => {
+      setProduto(produto);
+    })
+    .catch((error) => {
+      console.error('Erro ao buscar o produto:', error);
+      setProduto(null);
+    });
+  }, [produtoId]);
+
+  if (!produto) {
+    return null;
+  }
+
   return (
-    <View style={styles.container}>
+        <View style={styles.container}>
       <Text style={styles.nome}>{produto.nome}</Text>
       <Text style={styles.preco}>R$ {produto.preco.toFixed(2)}</Text>
       <Text style={styles.descricao}>{produto.descricao}</Text>
     </View>
   );
-}
-
-export default function TelaDetalheProduto({ route, produtos }: Props) {
-  const { produtoId } = route.params;
-  const produto = produtos.find(p => p.id === produtoId);
-  return DetalheProduto({ produto: produto! });
 }
 
 const styles = StyleSheet.create({

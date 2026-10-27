@@ -35,12 +35,6 @@ export default function ListaProdutos({ navigation }: Props) {
         });
     }, []);
 
-    const produtosFiltrados = useMemo(() => {
-        return produtos.filter(produto =>
-            produto.nome.toLowerCase().includes(busca.toLowerCase())
-        );
-    }, [busca, produtos]);
-
     function validarSalvarProduto() {
         if (validarProduto(nome, preco)) {
             const novoProduto: Produto = {
@@ -80,7 +74,7 @@ export default function ListaProdutos({ navigation }: Props) {
 
     useEffect(() => {
         getProdutos(pagina, busca).then((resposta) => {
-            setProdutos(resposta);
+            setProdutos(resposta.content);
         });
     }, [pagina, busca]);
 
@@ -133,21 +127,21 @@ export default function ListaProdutos({ navigation }: Props) {
 
                 <ScrollView>
                     <FlatList
-                        data={produtosFiltrados}
-                        keyExtractor={(item) => item.id}
+                        data={produtos}
+                        keyExtractor={(item) => item.produtoId}
                         renderItem={({ item }) => (
                             <View style={styles.item}>
                                 <TouchableOpacity
                                     style={styles.itemInfo}
-                                    onPress={() => navigation.navigate('TelaDetalheProduto', { produtoId: item.id })}>
+                                    onPress={() => navigation.navigate('TelaDetalheProduto', { produtoId: item.produtoId })}>
                                     <Text style={styles.nome}>{item.nome}</Text>
                                     <Text style={styles.preco}>R$ {item.preco}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.botaoFavorito}
-                                    onPress={() => alterarFavorito(item.id)}>
+                                    onPress={() => alterarFavorito(item.produtoId)}>
                                     <Text style={styles.favoritoTexto}>
-                                        {favoritos.includes(item.id) ? '♥' : '♡'}
+                                        {favoritos.includes(item.produtoId) ? '♥' : '♡'}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
