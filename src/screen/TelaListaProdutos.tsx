@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, FlatList, TextInput, View, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Produto } from '../types/produto';
-import { getProdutos } from '../service/produto-service';
+import { Produto, ProdutoRequest } from '../types/produto';
+import { getProdutos, postProduto, ultimaPagina } from '../service/produto-service';
 import { RootStackParamList } from '../../App';
 
 type Props = NavigationProp<RootStackParamList, 'TelaListaProdutos'>;
@@ -18,14 +18,56 @@ export default function ListaProdutos({ navigation }: Props) {
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
     const [busca, setBusca] = useState('');
+    const [ultima, setUltima] = useState(false);
+
 
    const [descricao, setDescricao] = useState('');
     const [nome, setNome] = useState('');
     const [preco, setPreco] = useState('');
+    const [quantidade, setQuantidade] = useState('');
 
     const [favoritos, setFavoritos] = useState([]);
     
     const buscandoMais = useRef(false);
+
+    function carregarPrimeiraPagina() {
+        setCarregando(true);
+        getProdutos(0, busca).then((resposta) => {
+            setProdutos(resposta.content);
+            setPagina(0);
+            setUltima(ultimaPagina(resposta));
+        })
+        .catch((erro) => {
+            setErro('Erro ao carregar produtos: ' + erro.message);
+        })
+        .finally(() => {
+            setCarregando(false);
+        });
+    }
+
+    useEffect(() => {
+        carregarPrimeiraPagina();
+    }, [busca]);
+
+    async function carregarMaisProdutos() {
+        if (buscandoMais.current || ultima || carregando) {
+            return;
+        }
+
+        buscandoMais.current = true;
+        const proximaPagina = pagina + 1;
+
+        try {
+            const resposta = await getProdutos(proximaPagina, busca);
+            setProdutos((atual) => [...atual, ...resposta.content]);
+            setPagina(proximaPagina);
+            setUltima(ultimaPagina(resposta));
+        }   catch (error) {
+            setErro('Erro ao carregar mais produtos: ' + error.message);
+        } finally {
+            buscandoMais.current = false;
+        }
+    }   
 
     useEffect(() => {
         AsyncStorage.getItem(CHAVE_FAVORITOS).then(valor => {
@@ -37,15 +79,25 @@ export default function ListaProdutos({ navigation }: Props) {
 
     function validarSalvarProduto() {
         if (validarProduto(nome, preco)) {
-            const novoProduto: Produto = {
+            const novoProduto: ProdutoRequest = {
                 nome: nome,
                 preco: parseFloat(preco),
-                descricao: descricao
+                descricao: descricao,
+                quantidade: parseFloat(quantidade)
             };
-            setProdutos((atual) => [...atual, novoProduto]);
-            setNome('');
-            setPreco('');
-            setDescricao('');
+
+            postProduto(novoProduto)
+                .then((produto) => {
+                    setProdutos((atual) => [produto, ...atual]);
+                    setNome('');
+                    setPreco('');
+                    setDescricao('');
+                    setQuantidade('');
+                    setErro('');
+                })
+                .catch((erro) => {
+                    setErro('Erro ao salvar produto: ' + erro.message);
+                });
         }
     }
 
@@ -70,13 +122,6 @@ export default function ListaProdutos({ navigation }: Props) {
             return novo;
         });
     }
-
-
-    useEffect(() => {
-        getProdutos(pagina, busca).then((resposta) => {
-            setProdutos(resposta.content);
-        });
-    }, [pagina, busca]);
 
     return (
         <SafeAreaView style={styles.area} edges={['top', 'left', 'right']}>
@@ -109,6 +154,15 @@ export default function ListaProdutos({ navigation }: Props) {
                         returnKeyType='done'
                     />
 
+   
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Quantidade do Produto"
+                        value={quantidade}
+                        onChangeText={setQuantidade}
+                        keyboardType='numeric'
+                        returnKeyType='next'
+                    />
 
                     {erro ? <Text style={{ color: 'red' }}>{erro}</Text> : null}
 
@@ -125,10 +179,11 @@ export default function ListaProdutos({ navigation }: Props) {
                     onChangeText={setBusca}
                 />
 
-                <ScrollView>
                     <FlatList
                         data={produtos}
                         keyExtractor={(item) => item.produtoId}
+                        onEndReached={carregarMaisProdutos}
+                        onEndReachedThreshold={0.8}
                         renderItem={({ item }) => (
                             <View style={styles.item}>
                                 <TouchableOpacity
@@ -147,7 +202,6 @@ export default function ListaProdutos({ navigation }: Props) {
                             </View>
 
                         )} />
-                </ScrollView>
             </KeyboardAvoidingView >
         </SafeAreaView>
     );
